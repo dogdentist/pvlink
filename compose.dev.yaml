@@ -1,0 +1,216 @@
+services:
+  pvlink-lb:
+    container_name: pvlink-traefik
+    build:
+      context: source/traefik
+      dockerfile: Dockerfile
+    volumes:
+      - "$PWD/env/certs:/certs:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - pvlink-network
+    restart: unless-stopped
+  pvlink-db:
+    container_name: pvlink-db
+    build:
+      context: source/db
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_DB=pvlink
+      - POSTGRES_USER=pvlink
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      - pvlink-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+  pvlink-shortener-cache:
+    container_name: pvlink-shortener-cache
+    image: redis:8.2.2-alpine3.22
+    environment:
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
+      - REDIS_DEFAULT_TTL=3600
+    networks:
+      - pvlink-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+  pvlink-analytic-queue:
+    container_name: pvlink-analytic-queue
+    image: nats:2.12.1-alpine3.22
+    networks:
+      - pvlink-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+  pvlink-analytic-cache:
+    container_name: pvlink-analytic-cache
+    image: redis:8.2.2-alpine3.22
+    environment:
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
+      - REDIS_DEFAULT_TTL=86400
+    networks:
+      - pvlink-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+  pvlink-web-cache:
+    container_name: pvlink-web-cache
+    image: redis:8.2.2-alpine3.22
+    environment:
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
+      - REDIS_DEFAULT_TTL=3600
+    networks:
+      - pvlink-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+  pvlink-shortener:
+    container_name: pvlink-shortener
+    build:
+      context: source/shortener
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.short.rule: Host(`${ROOT_DOMAIN}`)
+      traefik.http.routers.short.entrypoints: web
+      traefik.http.routers.shorts.rule: Host(`${ROOT_DOMAIN}`)
+      traefik.http.routers.shorts.entrypoints: websecure
+      traefik.http.routers.shorts.tls: "true"
+      traefik.http.services.short.loadbalancer.server.port: "80"
+    environment:
+      - PVLINK_LOG_RETENTION=${LOG_RETENTION_DAYS}
+      - PVLINK_ROOT_DOMAIN=${ROOT_DOMAIN}
+      - PVLINK_FALLBACK_URL=${FALLBACK_URL}
+      - PVLINK_DB_FQDN=pvlink-db
+      - PVLINK_DB_USER=pvlink
+      - PVLINK_DB_PASSWORD=${DB_PASSWORD}
+      - PVLINK_DB_NAME=pvlink
+      - PVLINK_DB_MAX_CONNS=100
+      - PVLINK_CACHE_FQDN=pvlink-shortener-cache
+      - PVLINK_ANALYTIC_QUEUE_FQDN=pvlink-analytic-queue
+    volumes:
+      - "$PWD/source/shortener:/home/developer/project"
+      - "$PWD/source/shortener/app/log:/var/log/pvlink"
+      - "/tmp/pvlink/shortener-cargo:/home/developer/.cargo"
+    networks:
+      - pvlink-network
+  pvlink-analytic:
+    container_name: pvlink-analytic
+    build:
+      context: source/analytic
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    environment:
+      - PVLINK_LOG_RETENTION=${LOG_RETENTION_DAYS}
+      - PVLINK_DB_FQDN=pvlink-db
+      - PVLINK_DB_USER=pvlink
+      - PVLINK_DB_PASSWORD=${DB_PASSWORD}
+      - PVLINK_DB_NAME=pvlink
+      - PVLINK_DB_MAX_CONNS=100
+      - PVLINK_CACHE_FQDN=pvlink-analytic-cache
+      - PVLINK_ANALYTIC_QUEUE_FQDN=pvlink-analytic-queue
+      - ANALYTIC_IPINFO_TOKEN=${ANALYTIC_IPINFO_TOKEN}
+    volumes:
+      - "$PWD/source/analytic:/home/developer/project"
+      - "$PWD/source/analytic/app/log:/var/log/pvlink"
+      - "/tmp/pvlink/analytic-cargo:/home/developer/.cargo"
+    networks:
+      - pvlink-network
+  pvlink-purger:
+    container_name: pvlink-purger
+    build:
+      context: source/purger
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    environment:
+      - PVLINK_LOG_RETENTION=${LOG_RETENTION_DAYS}
+      - PVLINK_DB_FQDN=pvlink-db
+      - PVLINK_DB_USER=pvlink
+      - PVLINK_DB_PASSWORD=${DB_PASSWORD}
+      - PVLINK_DB_NAME=pvlink
+      - PVLINK_DB_MAX_CONNS=100
+      - PVLINK_PURGE_INTERVAL_MINUTES=30
+    volumes:
+      - "$PWD/source/purger:/home/developer/project"
+      - "$PWD/source/purger/app/log:/var/log/pvlink"
+      - "/tmp/pvlink/purger-cargo:/home/developer/.cargo"
+    networks:
+      - pvlink-network
+  pvlink-backend:
+    container_name: pvlink-backend
+    build:
+      context: source/backend
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.api.rule: Host(`admin.${ROOT_DOMAIN}`) && PathPrefix(`/api`)
+      traefik.http.routers.api.entrypoints: web
+      traefik.http.routers.api.middlewares: adminDashboardWhitelist@file,redirectHttps@file
+      traefik.http.routers.apis.rule: Host(`admin.${ROOT_DOMAIN}`) && PathPrefix(`/api`)
+      traefik.http.routers.apis.entrypoints: websecure
+      traefik.http.routers.apis.tls: "true"
+      traefik.http.routers.apis.middlewares: adminDashboardWhitelist@file
+      traefik.http.services.api.loadbalancer.server.port: "80"
+    environment:
+      - PVLINK_LOG_RETENTION=${LOG_RETENTION_DAYS}
+      - PVLINK_DB_FQDN=pvlink-db
+      - PVLINK_DB_USER=pvlink
+      - PVLINK_DB_PASSWORD=${DB_PASSWORD}
+      - PVLINK_DB_NAME=pvlink
+      - PVLINK_DB_MAX_CONNS=100
+      - PVLINK_CACHE_FQDN=pvlink-web-cache
+    volumes:
+      - "$PWD/source/backend:/home/developer/project"
+      - "$PWD/source/backend/app/log:/var/log/pvlink"
+    networks:
+      - pvlink-network
+  pvlink-frontend:
+    container_name: pvlink-frontend
+    build:
+      context: source/frontend
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.app.rule: Host(`admin.${ROOT_DOMAIN}`) && !PathPrefix(`/api`)
+      traefik.http.routers.app.entrypoints: web
+      traefik.http.routers.app.middlewares: adminDashboardWhitelist@file,redirectHttps@file
+      traefik.http.routers.apps.rule: Host(`admin.${ROOT_DOMAIN}`) && !PathPrefix(`/api`)
+      traefik.http.routers.apps.entrypoints: websecure
+      traefik.http.routers.apps.tls: "true"
+      traefik.http.routers.apps.middlewares: adminDashboardWhitelist@file
+      traefik.http.services.app.loadbalancer.server.port: "80"
+
+    volumes:
+      - "$PWD/source/frontend:/home/developer/project"
+    networks:
+      - pvlink-network
+
+networks:
+  pvlink-network:

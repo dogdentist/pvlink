@@ -1,0 +1,33 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/${TRAEFIK_CERT_FILENAME}
+        keyFile: /certs/${TRAEFIK_CERT_KEY_FILENAME}
+http:
+  routers:
+    dashboard:
+      rule: Host(`traefik.admin.${ROOT_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+      service: api@internal
+      middlewares:
+        - traefikDashboardWhitelist
+        - redirectHttps
+        - treafikAuth
+      entryPoints:
+        - websecure
+      tls: {}
+  middlewares:
+    redirectHttps:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    treafikAuth:
+      basicAuth:
+        users:
+          - "${TRAEFIK_DASHBOARD_USERNAME}:${TRAEFIK_DASHBOARD_PASSWORD}"
+    traefikDashboardWhitelist:
+      ipAllowList:
+        sourceRange: ${TRAEFIK_WHITELIST_IP_RANGE_LIST}
+    adminDashboardWhitelist:
+      ipAllowList:
+        sourceRange: ${ADMIN_DASHBOARD_WHITELIST_IP_RANGE_LIST}

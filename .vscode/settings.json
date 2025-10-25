@@ -1,0 +1,7 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "source/shortener/Cargo.toml",
+        "source/analytic/Cargo.toml",
+        "source/purger/Cargo.toml"
+    ]
+}

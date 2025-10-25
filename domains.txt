@@ -1,0 +1,5 @@
+# these are the dev links, put them in your /etc/hosts
+
+127.0.0.1 pvlink.localhost
+127.0.0.1 admin.pvlink.localhost
+127.0.0.1 traefik.admin.pvlink.localhost

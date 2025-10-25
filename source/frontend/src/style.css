@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+body {
+  @apply bg-black;
+}
+
+p,
+td,
+tr,
+input,
+div {
+  @apply text-gray-50;
+}
+
+input {
+  @apply border border-gray-50;
+}

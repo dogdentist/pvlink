@@ -1,0 +1,16 @@
+api:
+  dashboard: true
+entryPoints:
+  web:
+    address: ":80"
+    forwardedHeaders:
+      trustedIPs: ${TRAEFIK_TRUST_PROXIES_IP_RANGE_LIST}
+  websecure:
+    address: ":443"
+    forwardedHeaders:
+      trustedIPs: ${TRAEFIK_TRUST_PROXIES_IP_RANGE_LIST}
+providers:
+  docker: {}
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true

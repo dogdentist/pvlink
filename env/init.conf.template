@@ -1,0 +1,21 @@
+# the configuration, you must first configure this file before
+# running init.sh
+
+# warning, put the value in the key in a single quotes (')
+
+ROOT_DOMAIN='pvlink.localhost'
+# you can leave it empty ('') to not redirect on plain /
+FALLBACK_URL=''
+LOG_RETENTION_DAYS='30'
+TRAEFIK_CERT_FILENAME=''
+TRAEFIK_CERT_KEY_FILENAME=''
+TRAEFIK_TRUST_PROXIES_IP_RANGE_LIST='127.0.0.1/8,10.0.0.0/8,172.0.0.0/8,192.0.0.0/8'
+TRAEFIK_DASHBOARD_USERNAME=''
+# bcrypt of password
+TRAEFIK_DASHBOARD_PASSWORD=''
+TRAEFIK_WHITELIST_IP_RANGE_LIST='127.0.0.1/8,10.0.0.0/8,172.0.0.0/8,192.0.0.0/8'
+ADMIN_DASHBOARD_WHITELIST_IP_RANGE_LIST='127.0.0.1/8,10.0.0.0/8,172.0.0.0/8,192.0.0.0/8'
+TRUSTED_PROXIES_IP_RANGE_LIST='127.0.0.1/8,10.0.0.0/8,172.0.0.0/8,192.0.0.0/8'
+DB_PASSWORD=''
+# your token from https://ipinfo.io
+ANALYTIC_IPINFO_TOKEN=''

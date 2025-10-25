@@ -1,0 +1,9 @@
+target
+.cargo
+build.txt
+*.crt
+*.key
+*.key
+*.srl
+init.conf
+.env
