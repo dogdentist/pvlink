@@ -147,7 +147,7 @@ const yoga = createYoga<Context>({
                     INSERT INTO tb_link (
                       tb_link_short,
                       tb_link_long,
-                      tb_link_expires,
+                      tb_link_expires
                     ) VALUES (
                       ${args.shortLink},
                       ${args.targetLink},

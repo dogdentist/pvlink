@@ -9,7 +9,6 @@ import { useRouter } from 'vue-router';
 import { setAuthProp } from '../auth';
 import type { LinkType } from '../api';
 import Button from '../components/Button.vue';
-import { CombinedGraphQLErrors } from '@apollo/client';
 
 const router = useRouter();
 const linkPagesCount: Ref<number | null> = ref(null);

@@ -10,6 +10,7 @@ import { InMemoryCache } from '@apollo/client';
 import { ServerError } from '@apollo/client';
 import { setAuthProp } from '../auth';
 import { useRouter } from 'vue-router';
+import { CombinedGraphQLErrors } from '@apollo/client';
 
 const lut = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const shortLinkLength: Ref<number> = ref(16);
@@ -56,6 +57,8 @@ const addLink = async () => {
   }
 
   try {
+    console.log(`${JSON.stringify(fieldExpirationDate.value ? Math.floor(new Date(fieldExpirationDate.value).getTime() / 1000) : null)}`);
+
     const res = await client.mutate({
       mutation: gql`
         mutation createLink($shortLink: String!, $targetLink: String!, $expiration: Int) {
@@ -82,6 +85,8 @@ const addLink = async () => {
         setAuthProp(null);
         router.push("/login");
       }
+    } else if (CombinedGraphQLErrors.is(err)) {
+      console.log(`${JSON.stringify(err)}`);
     }
 
     console.error(`api call failed: ${err}`);
